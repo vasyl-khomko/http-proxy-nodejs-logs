@@ -4,41 +4,22 @@ var zlib = require('zlib');
 var colors = require('colors/safe');
 var morgan = require('morgan');
 var fs = require('fs');
+var http = require('http');
+var dateFormat = require('dateformat');
 
-var filePath = "./var/stubs-" + new Date().getDay() + "-" + new Date().getHours() + "-" + new Date().getMinutes() + ".json";
-fs.writeFileSync(filePath);
+var FILE_PATH = "./var/stubs_" + dateFormat(new Date(), "yy-mm-dd_HH:MM:ss") + ".json";
+
+fs.writeFileSync(FILE_PATH, "[]");
 
 var requests = [];
 var currentRequest;
 
 var options = {
-  target: 'https://slack.com', // target host
-  changeOrigin: true,                         // needed for virtual hosted sites
-  onProxyReq: function(proxyReq, req, res) {
-    // console.log(colors.blue("\n[" + new Date().g + "] - ") + req.url);
-    // console.log(colors.green("[Request]"));
-    // console.log(colors.green("Reques Headers: ") + JSON.stringify(req.headers, null, 2));
-    var body = "";
+  target: 'https://vasyl-kh1.wixanswers.com', // target host
+  changeOrigin: true,          // needed for virtual hosted sites
 
-    req.on('data', function(chunk) {
-        body += chunk;
-    });
-    req.on('end', function() {
-        // console.log(colors.green("Reques Body: ") + unescape(body));
-        // console.log("\n");
-    });
-
-  },
-
-  /**
-   * @param {http.IncomingMessage} proxyRes 
-   * @param {http.IncomingMessage} req 
-   * @param {http.IncomingMessage} res 
-   */
   onProxyRes: function(proxyRes, req, res) {
     console.log(colors.green(req.method + " " + req.url + " " + proxyRes.statusCode + " " + proxyRes.statusMessage));
-    // console.log(colors.green("Response Status: ") + proxyRes.statusCode);
-    // console.log(colors.green("Response Headers: ") + JSON.stringify(proxyRes.headers, null, 2));
 
     var output;
     if(proxyRes.headers['content-encoding'] == 'gzip') {
@@ -55,12 +36,11 @@ var options = {
         body += chunk.toString('utf-8');
     });
     output.on('end', function() {
-      //console.log(colors.green("Response Body: ") + body);
 
       var record = {
         "request": {
           "url": req.url,
-          "methos": req.method
+          "method": req.method
         },
         "response": {
           "status": proxyRes.statusCode,
@@ -68,7 +48,7 @@ var options = {
         }
       }
 
-      if(("content-type" in proxyRes.headers) && proxyRes.headers["content-type"].includes("application/json")) {
+      if (("content-type" in proxyRes.headers) && proxyRes.headers["content-type"].includes("application/json")) {
         record.response.json = JSON.parse(body);
       } else {
         record.response.body = body;
@@ -76,7 +56,7 @@ var options = {
 
       requests.push(record);
 
-      fs.writeFileSync(filePath, JSON.stringify(requests, null, 2));
+      fs.writeFileSync(FILE_PATH, JSON.stringify(requests, null, 2));
     });
   }
 };
